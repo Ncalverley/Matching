@@ -2308,6 +2308,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     sum.caliper.drops <- 0
     X.orig <- X
+    
+    print("Got to point 1.")
 
 #are we using the restriction matrix?
     if(is.matrix(restrict)) {
@@ -2333,6 +2335,7 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 # distances less than ccc or cdd are interpeted as zero.
 # these are passed in.  ccc, cdd
 
+    print("Got to point 2.")
 
 # I. set up
 # I.a. vector for which observations we want the average effect
@@ -2400,6 +2403,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         sv <- sv * sqrt(N/(N-1))
         Sig.V[j,1] <- sv
       } #end of j loop
+    
+    print("Got to point 3.")
 
 # I.d. define weight matrix for metric, taking into account normalization of
 # regressors.
@@ -2446,6 +2451,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         caliperflag <- 1
         use.ecaliper <- s1$ecaliper
       }
+    
+    print("Got to point 4.")
 
     #if we have a diagonal matrix we can void cblas_dgemm
     if (Kx > 1)
@@ -2505,6 +2512,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     #      }
     #    return(ret)
     #  }
+    
+    print("Got to point 5.")
         
     if (All==2)
       {
@@ -2538,6 +2547,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     W <- indx[,3]
     
+    print("Got to point 6.")
+    
     if(BiasAdj==1 & sum(W) < ncol(Z))
       {
         warning("Fewer (weighted) matches than variables in 'Z': BiasAdjust set to FALSE")
@@ -2554,7 +2565,9 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         IZ <- Z[indx[,1],]
         Zt <- Z[indx[,4],]
         Zc <- Z[indx[,5],]
-      }
+    }
+    
+    print("Got to point 7.")
 
     est.func <- function(N, All, Tr, indx, weight, BiasAdj, Kz)
       {
@@ -2631,6 +2644,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         return(list(YCAUS=YCAUS,ZCAUS=ZCAUS,Kcount=Kcount,KKcount=KKcount))
       } #end of est.func
     
+    print("Got to point 8.")
+    
     if(version=="standard" & BiasAdj==0)
       {
         ret <- .Call("EstFuncC", as.integer(N), as.integer(All), as.integer(nrow(indx)),
@@ -2680,7 +2695,9 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     if (length(I) < 1)
       {
         return(list(sum.caliper.drops=N))
-      }
+    }
+    
+    print("Got to point 9.")
     
     if (BiasAdj==1)
       {
@@ -2727,7 +2744,9 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
           } else {
             Alphat <- matrix(0, nrow=Kz, ncol=1)
           } #end if ALL
-      }
+    }
+    
+    print("Got to point 10.")
 
     if(BiasAdj==1)
       {
@@ -2767,7 +2786,9 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 #            KW <- ncol(wout)
             Alphac <- as.matrix(wout[2:NW,1])
           }
-      }
+    }
+    
+    print("Got to point 11.")
 
     if(BiasAdj==1)
       {
@@ -2793,6 +2814,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     # III. If conditional variance is needed, initialize variance vector
     # and loop through all observations
+    
+    print("Got to point 12.")
 
     if (Var.calc>0)
       {
@@ -2855,6 +2878,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         
     if (All==2)
       est <- -1*est
+    
+    print("Got to point 13.")
 
 #    if (exact==1)
 #      {
