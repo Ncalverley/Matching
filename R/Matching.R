@@ -2443,9 +2443,9 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     
 
     if(nrow(Weight.matrix) == 1 & ncol(Weight.matrix) == 1 & Weight.matrix[1,1] == 1) {
-      eigVal <- min(eigen(Weight.matrix, only.values=TRUE)$values)
-    } else {
       eigVal <- 1
+    } else {
+      eigVal <- min(eigen(Weight.matrix, only.values=TRUE)$values)
     }
     
     
