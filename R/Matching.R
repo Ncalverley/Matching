@@ -2441,6 +2441,11 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 #        Sig.X <- rbind(Sig.X, matrix(1, nrow(Sig.V), 1))
 #      } #end of exact
 
+    test <- eigen(Weight.matrix, only.values=TRUE)$values
+    print(paste0("Test object exists: ", exists("test")))
+    print(paste0("Structure of test: ", str(test)))
+    print(paste0("Structure of ccc: ", str(ccc)))
+    
     if ( min(eigen(Weight.matrix, only.values=TRUE)$values) < ccc )
       Weight.matrix <- Weight.matrix + diag(Kx)*ccc
     
