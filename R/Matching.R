@@ -2421,6 +2421,9 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
             Weight.matrix <- diag(Kx)
           }
       }
+    
+    print("Got to point 3a.")
+    
       # DO NOT RESCALE THE Weight.matrix!!
       #else if (Weight==3)
       #  {
@@ -2440,8 +2443,12 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     if ( min(eigen(Weight.matrix, only.values=TRUE)$values) < ccc )
       Weight.matrix <- Weight.matrix + diag(Kx)*ccc
+    
+    print("Got to point 3b.")
 
     ww <- chol(Weight.matrix) # so that ww*ww=w.m
+    
+    print("Got to point 3c.")
 
     if(is.null(s1$ecaliper))
       {
