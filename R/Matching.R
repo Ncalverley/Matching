@@ -2440,488 +2440,492 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 #        Mu.X  <- rbind(Mu.X, matrix(0, nrow(Mu.V), 1))
 #        Sig.X <- rbind(Sig.X, matrix(1, nrow(Sig.V), 1))
 #      } #end of exact
-
-    test <- eigen(Weight.matrix, only.values=TRUE)$values
-    print(paste0("Test object exists: ", exists("test")))
-    print(paste0("Structure of test: ", str(test)))
-    print(paste0("Structure of ccc: ", str(ccc)))
     
-    if ( min(eigen(Weight.matrix, only.values=TRUE)$values) < ccc )
-      Weight.matrix <- Weight.matrix + diag(Kx)*ccc
+    Weight.matrix.global <<- Weight.matrix
     
-    print("Got to point 3b.")
+    return(TRUE)
 
-    ww <- chol(Weight.matrix) # so that ww*ww=w.m
-    
-    print("Got to point 3c.")
-
-    if(is.null(s1$ecaliper))
-      {
-        caliperflag <- 0
-        use.ecaliper <- 0
-      } else {
-        caliperflag <- 1
-        use.ecaliper <- s1$ecaliper
-      }
-    
-    print("Got to point 4.")
-
-    #if we have a diagonal matrix we can void cblas_dgemm
-    if (Kx > 1)
-      {
-        DiagWeightMatrixFlag <- as.double(sum( (Weight.matrix!=diag(diag(Weight.matrix))) )==0)
-      } else {
-        DiagWeightMatrixFlag <- 1
-      }
-
-    if(is.null(MatchLoopC.indx))
-      {
-    #indx:
-    # 1] I (unadjusted); 2] IM (unadjusted); 3] weight; 4] I (adjusted); 5] IM (adjusted)
-        if(weights.flag==TRUE)
-          {
-            MatchLoopC.indx <- MatchLoopC(N=s1$N, xvars=Kx, All=s1$All, M=s1$M,
-                                          cdd=cdd, caliperflag=caliperflag, replace=replace, ties=ties,
-                                          ww=ww, Tr=s1$Tr, Xmod=s1$X,
-                                          weights=weight,
-                                          CaliperVec=use.ecaliper, Xorig=X.orig,
-                                          restrict.trigger=restrict.trigger, restrict=restrict,
-                                          DiagWeightMatrixFlag=DiagWeightMatrixFlag)
-          } else {
-            MatchLoopC.indx <- MatchLoopCfast(N=s1$N, xvars=Kx, All=s1$All, M=s1$M,
-                                              cdd=cdd, caliperflag=caliperflag, replace=replace, ties=ties,
-                                              ww=ww, Tr=s1$Tr, Xmod=s1$X,
-                                              CaliperVec=use.ecaliper, Xorig=X.orig,
-                                              restrict.trigger=restrict.trigger, restrict=restrict,
-                                              DiagWeightMatrixFlag=DiagWeightMatrixFlag)
-          }
-      }
-
-    indx <- MatchLoopC.indx
-
-    if(indx[1,1]==0)
-      {
-        ret <- list()
-        ret$valid <- 0
-        if (caliperflag)
-          {
-            ret$sum.caliper.drops <- indx[1,6]
-          } else {
-            ret$sum.caliper.drops <- 0
-          }
-        return(ret)
-      } 
-    #we now keep going if we only have 1 valid match
-    #else if (nrow(indx)< 2)
-    #  {
-    #    ret <- list()
-    #    ret$valid <- 1
-    #    if (caliperflag)
-    #      {
-    #        ret$sum.caliper.drops <- indx[1,6]
-    #      } else {
-    #        ret$sum.caliper.drops <- 0
-    #      }
-    #    return(ret)
-    #  }
-    
-    print("Got to point 5.")
-        
-    if (All==2)
-      {
-        foo <- indx[,5]
-        indx[,5] <- indx[,4]
-        indx[,4] <- foo
-      }
-
-    if (caliperflag)
-      {
-        sum.caliper.drops <- indx[1,6]
-      } else {
-        sum.caliper.drops <- 0
-      }
-
-    #
-    # Generate variables which we need later on
-    #
-
-    I <- indx[,1]
-    IT <- Tr[indx[,1]]
-    IM <- indx[,2]
-
-#    IX <- X[indx[,1],]
-#    Xt <- X[indx[,4],]
-#    Xc <- X[indx[,5],]
-
-#    IY <- Y[indx[,1]]
-    Yt <- Y[indx[,4]]
-    Yc <- Y[indx[,5]]
-
-    W <- indx[,3]
-    
-    print("Got to point 6.")
-    
-    if(BiasAdj==1 & sum(W) < ncol(Z))
-      {
-        warning("Fewer (weighted) matches than variables in 'Z': BiasAdjust set to FALSE")
-        BiasAdj=0
-      }    
-
-    if(BiasAdj==1)
-      {
-        if(sum(W) < ncol(Z))
-          {
-            warning("Fewer matches than variables for Bias Adjustment")
-          }
-        
-        IZ <- Z[indx[,1],]
-        Zt <- Z[indx[,4],]
-        Zc <- Z[indx[,5],]
-    }
-    
-    print("Got to point 7.")
-
-    est.func <- function(N, All, Tr, indx, weight, BiasAdj, Kz)
-      {
-        Kcount <- as.matrix(rep(0, N))    
-        KKcount <- as.matrix(rep(0, N))
-        YCAUS <- matrix(0, nrow=N, ncol=1)
-
-        if (BiasAdj==1)
-          {
-            ZCAUS <- matrix(0, nrow=N, ncol=Kz)
-          } else {
-            ZCAUS <- NULL
-          }
-        
-        for (i in 1:N)
-          {
-            if ( ( Tr[i]==1 & All!=1) | All==1 )
-              {
-
-                foo.indx <- indx[,1]==i
-                foo.indx2 <- foo.indx
-                
-                sum.foo <- sum(foo.indx)
-                
-                if (sum.foo < 1)
-                  next;            
-                
-                foo <- rep(FALSE, N)
-                foo.indx <- indx[foo.indx,2]
-                foo[foo.indx] <- rep(TRUE,sum.foo)
-
-                #   inner.func <- function(N, weight, indx, foo.indx2, Y, Tr, foo)
-  
-                Kcount <- Kcount + weight[i] * weight*foo/sum(foo*weight)
-                
-                KKcount <- KKcount + weight[i]*weight*weight*foo/
-                  (sum(foo*weight)*sum(foo*weight))
-                
-                foo.indx2.2 <- indx[foo.indx2,2];
-                foo.indx2.3 <- indx[foo.indx2,3];
-                sum.foo.indx2.3 <- sum(foo.indx2.3)
-
-                if(Tr[i]==1)
-                  {
-                    YCAUS[i] <- Y[i] - sum((Y[foo.indx2.2]*foo.indx2.3))/sum.foo.indx2.3
-                  } else {
-                    YCAUS[i] <- sum((Y[foo.indx2.2]*foo.indx2.3))/sum.foo.indx2.3 - Y[i]
-                  }
-
-                if (BiasAdj==1)
-                  {
-                    
-                    if(Tr[i]==1)
-                      {
-                        if (sum.foo > 1)
-                          {
-                            ZCAUS[i,] <-
-                              Z[i,] - t(Z[foo.indx2.2,]) %*% foo.indx2.3/sum.foo.indx2.3
-                          } else {
-                            ZCAUS[i,] <-
-                              Z[i,] - Z[foo.indx2.2,]*foo.indx2.3/sum.foo.indx2.3
-                          }
-                      } else {
-                        if (sum.foo > 1)
-                          {
-                            ZCAUS[i,] <- t(Z[foo.indx2.2,]) %*% foo.indx2.3/sum.foo.indx2.3 - Z[i,]
-                          } else {
-                            ZCAUS[i,] <- Z[foo.indx2.2,]*foo.indx2.3/sum.foo.indx2.3 - Z[i,]
-                          }
-                      }
-                  } #endof BiasAdj
-              }
-          } #end of if
-        return(list(YCAUS=YCAUS,ZCAUS=ZCAUS,Kcount=Kcount,KKcount=KKcount))
-      } #end of est.func
-    
-    print("Got to point 8.")
-    
-    if(version=="standard" & BiasAdj==0)
-      {
-        ret <- .Call("EstFuncC", as.integer(N), as.integer(All), as.integer(nrow(indx)),
-                     as.double(Y), as.double(Tr),
-                     as.double(weight), as.double(indx),
-                     PACKAGE="Matching")
-        YCAUS <- ret[,1];
-        Kcount <- ret[,2];
-        KKcount <- ret[,3];
-      } else if (version=="standard") {
-        ret.est <- est.func(N=N, All=All, Tr=Tr, indx=indx, weight=weight, BiasAdj=BiasAdj, Kz=Kz)
-        YCAUS <- ret.est$YCAUS
-        ZCAUS <- ret.est$ZCAUS
-        Kcount <- ret.est$Kcount
-        KKcount <- ret.est$KKcount
-      }
-
-    if (All!=1)
-      {
-        I  <- as.matrix(I[IT==1])
-        IT <- as.matrix(IT[IT==1])
-        Yc <- as.matrix(Yc[IT==1])
-        Yt <- as.matrix(Yt[IT==1])
-        W  <- as.matrix(W[IT==1])
-        if (BiasAdj==1)
-          {
-            if (Kz > 1)
-              {
-                Zc <- as.matrix(Zc[IT==1,])
-                Zt <- as.matrix(Zt[IT==1,])
-                IZ <- as.matrix(IZ[IT==1,])
-              } else{
-                Zc <- as.matrix(Zc[IT==1])
-                Zt <- as.matrix(Zt[IT==1])
-                IZ <- as.matrix(IZ[IT==1])            
-              }
-          }
-#        IM <- as.matrix(IM[IT==1,])
-#        IY <- as.matrix(IY[IT==1])
-#        IX.u  <- as.matrix(IX.u[IT==1,])
-#        Xc.u  <- as.matrix(Xc.u[IT==1,])
-#        Xt.u  <- as.matrix(Xt.u[IT==1,])
-#        Xc    <- as.matrix(Xc[IT==1,])
-#        Xt <- as.matrix(Xt[IT==1,])
-      } #end of if
-    
-    if (length(I) < 1)
-      {
-        return(list(sum.caliper.drops=N))
-    }
-    
-    print("Got to point 9.")
-    
-    if (BiasAdj==1)
-      {
-        # III. Regression of outcome on covariates for matches
-        if (All==1)
-          {
-            # number of observations
-            NNt <- nrow(Z)
-            # add intercept        
-            ZZt <- cbind(rep(1, NNt), Z)
-            # number of covariates
-            Kx <- ncol(ZZt)
-            xw <- ZZt*(sqrt(Tr*Kcount) %*% t(as.matrix(rep(1,Kx))))
-            
-            foo <- min(eigen(t(xw)%*%xw, only.values=TRUE)$values)
-            foo <- as.double(foo<=ccc)
-            foo2 <- apply(xw, 2, sd)
-
-            options(show.error.messages = FALSE)
-            wout <- NULL
-            try(wout <- solve( t(xw) %*% xw + diag(Kx) * ccc * (foo) * max(foo2)) %*%
-                (t(xw) %*% (Y*sqrt(Tr*Kcount))))
-            if(is.null(wout))
-              {
-                wout2 <- NULL
-                try(wout2 <- ginv( t(xw) %*% xw + diag(Kx) * ccc * (foo) * max(foo2)) %*%
-                    (t(xw) %*% (Y*sqrt(Tr*Kcount))))
-                if(!is.null(wout2))
-                  {
-                    wout <-wout2
-                    warning("using generalized inverse to calculate Bias Adjustment probably because of singular 'Z'")
-                  }
-              }
-            options(show.error.messages = TRUE)
-            if(is.null(wout))
-              {
-                warning("unable to calculate Bias Adjustment probably because of singular 'Z'")
-                BiasAdj <- 0
-              } else {
-                NW <- nrow(wout)
-#                KW <- ncol(wout)
-                Alphat <- wout[2:NW,1]
-              }
-          } else {
-            Alphat <- matrix(0, nrow=Kz, ncol=1)
-          } #end if ALL
-    }
-    
-    print("Got to point 10.")
-
-    if(BiasAdj==1)
-      {
-        # III.b.  Controls
-        NNc <- nrow(Z)
-        ZZc <- cbind(matrix(1, nrow=NNc, ncol=1),Z)
-        Kx <- ncol(ZZc)
-        
-        xw <- ZZc*(sqrt((1-Tr)*Kcount) %*% matrix(1, nrow=1, ncol=Kx))
-        
-        foo <- min(eigen(t(xw)%*%xw, only.values=TRUE)$values)
-        foo <- as.double(foo<=ccc)
-        foo2 <- apply(xw, 2, sd)
-
-        options(show.error.messages = FALSE)
-        wout <- NULL        
-        try(wout <- solve( t(xw) %*% xw + diag(Kx) * ccc * (foo) * max(foo2)) %*%
-            (t(xw) %*% (Y*sqrt((1-Tr)*Kcount))))
-        if(is.null(wout))
-          {
-            wout2 <- NULL
-            try(wout2 <- ginv( t(xw) %*% xw + diag(Kx) * ccc * (foo) * max(foo2)) %*%
-                (t(xw) %*% (Y*sqrt((1-Tr)*Kcount))))
-            if(!is.null(wout2))
-              {
-                wout <-wout2
-                warning("using generalized inverse to calculate Bias Adjustment probably because of singular 'Z'")
-              }
-          }        
-        options(show.error.messages = TRUE)
-        if(is.null(wout))
-          {
-            warning("unable to calculate Bias Adjustment probably because of singular 'Z'")
-            BiasAdj <- 0
-          } else {
-            NW <- nrow(wout)
-#            KW <- ncol(wout)
-            Alphac <- as.matrix(wout[2:NW,1])
-          }
-    }
-    
-    print("Got to point 11.")
-
-    if(BiasAdj==1)
-      {
-        # III.c. adjust matched outcomes using regression adjustment for bias adjusted matching estimator
-        IZ <- as.matrix(IZ)
-        Zc <- as.matrix(Zc)
-        Zt <- as.matrix(Zt)
-        Alphat <- as.matrix(Alphat)
-
-        SCAUS <- YCAUS-Tr*(ZCAUS %*% Alphac)-(1-Tr)*(ZCAUS %*% Alphat)
-        # adjusted control outcome
-        Yc.adj <- Yc+BiasAdj * (IZ-Zc) %*% Alphac
-        # adjusted treated outcome
-        Yt.adj <- Yt+BiasAdj*(IZ-Zt) %*% Alphat
-        Tau.i <- Yt.adj - Yc.adj
-      } else {
-        Yc.adj <- Yc
-        Yt.adj <- Yt
-        Tau.i <- Yt.adj - Yc.adj        
-      }
-       
-    art.data <- cbind(I,IM)
-
-    # III. If conditional variance is needed, initialize variance vector
-    # and loop through all observations
-    
-    print("Got to point 12.")
-
-    if (Var.calc>0)
-      {
-        #For R version of this function see Matching version < 4.5-0008
-        Sigs <- VarCalcMatchC(N=N, xvars=ncol(X), Var.calc=Var.calc,
-                              cdd=cdd, caliperflag=caliperflag, 
-                              ww=ww, Tr=Tr, Xmod=s1$X,
-                              CaliperVec=use.ecaliper, Xorig=X.orig,
-                              restrict.trigger=restrict.trigger, restrict=restrict,
-                              DiagWeightMatrixFlag=DiagWeightMatrixFlag,
-                              Y=Y, weightFlag=weights.flag, weight=weight)            
-      } #end of var.calc > 0
-
-    est <- t(W) %*% Tau.i/sum(W) # matching estimator
-
-    if(version=="standard")
-      {
-        if (Var.calc==0)
-          {
-            eps <- Tau.i - as.double(est)
-            eps.sq <- eps*eps
-            Sigs <- 0.5 * matrix(1, N, 1) %*% (t(eps.sq) %*% W)/sum(W) #sss <- sqrt(Sigs[1,1])
-          } #end of Var.calc==0
-        
-        SN <- sum(iot.t)
-        var.sample <- sum((Sigs*(iot.t+iot.c*Kcount)*(iot.t+iot.c*Kcount))/(SN*SN))
-        
-        if (All==1)
-          {
-            var.pop <- sum((Sigs*(iot.c*Kcount*Kcount+2*iot.c*Kcount-iot.c*KKcount))/(SN*SN))
-          } else {
-            var.pop=sum((Sigs*(iot.c*Kcount*Kcount-iot.c*KKcount))/(SN*SN))
-          }
-        
-        if (BiasAdj==1)
-          {
-            dvar.pop <- sum(iot.t*(SCAUS-as.double(est))*(SCAUS-as.double(est)))/(SN*SN)
-          } else {
-            dvar.pop <- sum(iot.t*(YCAUS-as.double(est))*(YCAUS-as.double(est)))/(SN*SN)
-          }
-        
-        var.pop <- var.pop + dvar.pop
-        
-        if (SAMPLE==1)
-          {
-            var <- var.sample
-          } else {
-            #var <- max(var.sample, var.pop)
-            var <- var.pop
-          }
-        
-        var.cond <- max(var.sample,var.pop)-var.sample
-        se <- sqrt(var)
-        se.cond <- sqrt(var.cond)
-        #Sig <- sqrt(Sigs)        
-      } else {
-        se=NULL
-        se.cond=NULL
-      }
-        
-    if (All==2)
-      est <- -1*est
-    
-    print("Got to point 13.")
-
-#    if (exact==1)
-#      {
-#        Vt.u <- Xt.u[,(Kx-Mv+1):Kx]
-#        Vc.u <- Xc.u[,(Kx-Mv+1):Kx]
-#        Vdif <- abs(Vt.u-Vc.u)
-#
-#        if (Mv>1)
-#          Vdif <- as.matrix(apply(t(Vdif), 2, sum))
-#
-#        em[1,1] <- length(Vdif)
-#        em[2,1] <- sum(Vdif>0.000001)
-#      }#end of exact==1
-
-    if(!MatchbyAI)
-      {
-        return(list(est=est, se=se, se.cond=se.cond, W=W,
-                    sum.caliper.drops=sum.caliper.drops,
-                    art.data=art.data, 
-                    MatchLoopC=MatchLoopC.indx))
-      } else {
-        if(Var.calc==0)
-          Sigs <- NULL
-        return(list(est=est, se=se, se.cond=se.cond, W=W,
-                    sum.caliper.drops=sum.caliper.drops,
-                    art.data=art.data, 
-                    MatchLoopC=MatchLoopC.indx,
-                    YCAUS=YCAUS, Kcount=Kcount, KKcount=KKcount,
-                    Sigs=Sigs))
-      }
+#     test <- eigen(Weight.matrix, only.values=TRUE)$values
+#     print(paste0("Test object exists: ", exists("test")))
+#     print(paste0("Structure of test: ", str(test)))
+#     print(paste0("Structure of ccc: ", str(ccc)))
+#     
+#     if ( min(eigen(Weight.matrix, only.values=TRUE)$values) < ccc )
+#       Weight.matrix <- Weight.matrix + diag(Kx)*ccc
+#     
+#     print("Got to point 3b.")
+# 
+#     ww <- chol(Weight.matrix) # so that ww*ww=w.m
+#     
+#     print("Got to point 3c.")
+# 
+#     if(is.null(s1$ecaliper))
+#       {
+#         caliperflag <- 0
+#         use.ecaliper <- 0
+#       } else {
+#         caliperflag <- 1
+#         use.ecaliper <- s1$ecaliper
+#       }
+#     
+#     print("Got to point 4.")
+# 
+#     #if we have a diagonal matrix we can void cblas_dgemm
+#     if (Kx > 1)
+#       {
+#         DiagWeightMatrixFlag <- as.double(sum( (Weight.matrix!=diag(diag(Weight.matrix))) )==0)
+#       } else {
+#         DiagWeightMatrixFlag <- 1
+#       }
+# 
+#     if(is.null(MatchLoopC.indx))
+#       {
+#     #indx:
+#     # 1] I (unadjusted); 2] IM (unadjusted); 3] weight; 4] I (adjusted); 5] IM (adjusted)
+#         if(weights.flag==TRUE)
+#           {
+#             MatchLoopC.indx <- MatchLoopC(N=s1$N, xvars=Kx, All=s1$All, M=s1$M,
+#                                           cdd=cdd, caliperflag=caliperflag, replace=replace, ties=ties,
+#                                           ww=ww, Tr=s1$Tr, Xmod=s1$X,
+#                                           weights=weight,
+#                                           CaliperVec=use.ecaliper, Xorig=X.orig,
+#                                           restrict.trigger=restrict.trigger, restrict=restrict,
+#                                           DiagWeightMatrixFlag=DiagWeightMatrixFlag)
+#           } else {
+#             MatchLoopC.indx <- MatchLoopCfast(N=s1$N, xvars=Kx, All=s1$All, M=s1$M,
+#                                               cdd=cdd, caliperflag=caliperflag, replace=replace, ties=ties,
+#                                               ww=ww, Tr=s1$Tr, Xmod=s1$X,
+#                                               CaliperVec=use.ecaliper, Xorig=X.orig,
+#                                               restrict.trigger=restrict.trigger, restrict=restrict,
+#                                               DiagWeightMatrixFlag=DiagWeightMatrixFlag)
+#           }
+#       }
+# 
+#     indx <- MatchLoopC.indx
+# 
+#     if(indx[1,1]==0)
+#       {
+#         ret <- list()
+#         ret$valid <- 0
+#         if (caliperflag)
+#           {
+#             ret$sum.caliper.drops <- indx[1,6]
+#           } else {
+#             ret$sum.caliper.drops <- 0
+#           }
+#         return(ret)
+#       } 
+#     #we now keep going if we only have 1 valid match
+#     #else if (nrow(indx)< 2)
+#     #  {
+#     #    ret <- list()
+#     #    ret$valid <- 1
+#     #    if (caliperflag)
+#     #      {
+#     #        ret$sum.caliper.drops <- indx[1,6]
+#     #      } else {
+#     #        ret$sum.caliper.drops <- 0
+#     #      }
+#     #    return(ret)
+#     #  }
+#     
+#     print("Got to point 5.")
+#         
+#     if (All==2)
+#       {
+#         foo <- indx[,5]
+#         indx[,5] <- indx[,4]
+#         indx[,4] <- foo
+#       }
+# 
+#     if (caliperflag)
+#       {
+#         sum.caliper.drops <- indx[1,6]
+#       } else {
+#         sum.caliper.drops <- 0
+#       }
+# 
+#     #
+#     # Generate variables which we need later on
+#     #
+# 
+#     I <- indx[,1]
+#     IT <- Tr[indx[,1]]
+#     IM <- indx[,2]
+# 
+# #    IX <- X[indx[,1],]
+# #    Xt <- X[indx[,4],]
+# #    Xc <- X[indx[,5],]
+# 
+# #    IY <- Y[indx[,1]]
+#     Yt <- Y[indx[,4]]
+#     Yc <- Y[indx[,5]]
+# 
+#     W <- indx[,3]
+#     
+#     print("Got to point 6.")
+#     
+#     if(BiasAdj==1 & sum(W) < ncol(Z))
+#       {
+#         warning("Fewer (weighted) matches than variables in 'Z': BiasAdjust set to FALSE")
+#         BiasAdj=0
+#       }    
+# 
+#     if(BiasAdj==1)
+#       {
+#         if(sum(W) < ncol(Z))
+#           {
+#             warning("Fewer matches than variables for Bias Adjustment")
+#           }
+#         
+#         IZ <- Z[indx[,1],]
+#         Zt <- Z[indx[,4],]
+#         Zc <- Z[indx[,5],]
+#     }
+#     
+#     print("Got to point 7.")
+# 
+#     est.func <- function(N, All, Tr, indx, weight, BiasAdj, Kz)
+#       {
+#         Kcount <- as.matrix(rep(0, N))    
+#         KKcount <- as.matrix(rep(0, N))
+#         YCAUS <- matrix(0, nrow=N, ncol=1)
+# 
+#         if (BiasAdj==1)
+#           {
+#             ZCAUS <- matrix(0, nrow=N, ncol=Kz)
+#           } else {
+#             ZCAUS <- NULL
+#           }
+#         
+#         for (i in 1:N)
+#           {
+#             if ( ( Tr[i]==1 & All!=1) | All==1 )
+#               {
+# 
+#                 foo.indx <- indx[,1]==i
+#                 foo.indx2 <- foo.indx
+#                 
+#                 sum.foo <- sum(foo.indx)
+#                 
+#                 if (sum.foo < 1)
+#                   next;            
+#                 
+#                 foo <- rep(FALSE, N)
+#                 foo.indx <- indx[foo.indx,2]
+#                 foo[foo.indx] <- rep(TRUE,sum.foo)
+# 
+#                 #   inner.func <- function(N, weight, indx, foo.indx2, Y, Tr, foo)
+#   
+#                 Kcount <- Kcount + weight[i] * weight*foo/sum(foo*weight)
+#                 
+#                 KKcount <- KKcount + weight[i]*weight*weight*foo/
+#                   (sum(foo*weight)*sum(foo*weight))
+#                 
+#                 foo.indx2.2 <- indx[foo.indx2,2];
+#                 foo.indx2.3 <- indx[foo.indx2,3];
+#                 sum.foo.indx2.3 <- sum(foo.indx2.3)
+# 
+#                 if(Tr[i]==1)
+#                   {
+#                     YCAUS[i] <- Y[i] - sum((Y[foo.indx2.2]*foo.indx2.3))/sum.foo.indx2.3
+#                   } else {
+#                     YCAUS[i] <- sum((Y[foo.indx2.2]*foo.indx2.3))/sum.foo.indx2.3 - Y[i]
+#                   }
+# 
+#                 if (BiasAdj==1)
+#                   {
+#                     
+#                     if(Tr[i]==1)
+#                       {
+#                         if (sum.foo > 1)
+#                           {
+#                             ZCAUS[i,] <-
+#                               Z[i,] - t(Z[foo.indx2.2,]) %*% foo.indx2.3/sum.foo.indx2.3
+#                           } else {
+#                             ZCAUS[i,] <-
+#                               Z[i,] - Z[foo.indx2.2,]*foo.indx2.3/sum.foo.indx2.3
+#                           }
+#                       } else {
+#                         if (sum.foo > 1)
+#                           {
+#                             ZCAUS[i,] <- t(Z[foo.indx2.2,]) %*% foo.indx2.3/sum.foo.indx2.3 - Z[i,]
+#                           } else {
+#                             ZCAUS[i,] <- Z[foo.indx2.2,]*foo.indx2.3/sum.foo.indx2.3 - Z[i,]
+#                           }
+#                       }
+#                   } #endof BiasAdj
+#               }
+#           } #end of if
+#         return(list(YCAUS=YCAUS,ZCAUS=ZCAUS,Kcount=Kcount,KKcount=KKcount))
+#       } #end of est.func
+#     
+#     print("Got to point 8.")
+#     
+#     if(version=="standard" & BiasAdj==0)
+#       {
+#         ret <- .Call("EstFuncC", as.integer(N), as.integer(All), as.integer(nrow(indx)),
+#                      as.double(Y), as.double(Tr),
+#                      as.double(weight), as.double(indx),
+#                      PACKAGE="Matching")
+#         YCAUS <- ret[,1];
+#         Kcount <- ret[,2];
+#         KKcount <- ret[,3];
+#       } else if (version=="standard") {
+#         ret.est <- est.func(N=N, All=All, Tr=Tr, indx=indx, weight=weight, BiasAdj=BiasAdj, Kz=Kz)
+#         YCAUS <- ret.est$YCAUS
+#         ZCAUS <- ret.est$ZCAUS
+#         Kcount <- ret.est$Kcount
+#         KKcount <- ret.est$KKcount
+#       }
+# 
+#     if (All!=1)
+#       {
+#         I  <- as.matrix(I[IT==1])
+#         IT <- as.matrix(IT[IT==1])
+#         Yc <- as.matrix(Yc[IT==1])
+#         Yt <- as.matrix(Yt[IT==1])
+#         W  <- as.matrix(W[IT==1])
+#         if (BiasAdj==1)
+#           {
+#             if (Kz > 1)
+#               {
+#                 Zc <- as.matrix(Zc[IT==1,])
+#                 Zt <- as.matrix(Zt[IT==1,])
+#                 IZ <- as.matrix(IZ[IT==1,])
+#               } else{
+#                 Zc <- as.matrix(Zc[IT==1])
+#                 Zt <- as.matrix(Zt[IT==1])
+#                 IZ <- as.matrix(IZ[IT==1])            
+#               }
+#           }
+# #        IM <- as.matrix(IM[IT==1,])
+# #        IY <- as.matrix(IY[IT==1])
+# #        IX.u  <- as.matrix(IX.u[IT==1,])
+# #        Xc.u  <- as.matrix(Xc.u[IT==1,])
+# #        Xt.u  <- as.matrix(Xt.u[IT==1,])
+# #        Xc    <- as.matrix(Xc[IT==1,])
+# #        Xt <- as.matrix(Xt[IT==1,])
+#       } #end of if
+#     
+#     if (length(I) < 1)
+#       {
+#         return(list(sum.caliper.drops=N))
+#     }
+#     
+#     print("Got to point 9.")
+#     
+#     if (BiasAdj==1)
+#       {
+#         # III. Regression of outcome on covariates for matches
+#         if (All==1)
+#           {
+#             # number of observations
+#             NNt <- nrow(Z)
+#             # add intercept        
+#             ZZt <- cbind(rep(1, NNt), Z)
+#             # number of covariates
+#             Kx <- ncol(ZZt)
+#             xw <- ZZt*(sqrt(Tr*Kcount) %*% t(as.matrix(rep(1,Kx))))
+#             
+#             foo <- min(eigen(t(xw)%*%xw, only.values=TRUE)$values)
+#             foo <- as.double(foo<=ccc)
+#             foo2 <- apply(xw, 2, sd)
+# 
+#             options(show.error.messages = FALSE)
+#             wout <- NULL
+#             try(wout <- solve( t(xw) %*% xw + diag(Kx) * ccc * (foo) * max(foo2)) %*%
+#                 (t(xw) %*% (Y*sqrt(Tr*Kcount))))
+#             if(is.null(wout))
+#               {
+#                 wout2 <- NULL
+#                 try(wout2 <- ginv( t(xw) %*% xw + diag(Kx) * ccc * (foo) * max(foo2)) %*%
+#                     (t(xw) %*% (Y*sqrt(Tr*Kcount))))
+#                 if(!is.null(wout2))
+#                   {
+#                     wout <-wout2
+#                     warning("using generalized inverse to calculate Bias Adjustment probably because of singular 'Z'")
+#                   }
+#               }
+#             options(show.error.messages = TRUE)
+#             if(is.null(wout))
+#               {
+#                 warning("unable to calculate Bias Adjustment probably because of singular 'Z'")
+#                 BiasAdj <- 0
+#               } else {
+#                 NW <- nrow(wout)
+# #                KW <- ncol(wout)
+#                 Alphat <- wout[2:NW,1]
+#               }
+#           } else {
+#             Alphat <- matrix(0, nrow=Kz, ncol=1)
+#           } #end if ALL
+#     }
+#     
+#     print("Got to point 10.")
+# 
+#     if(BiasAdj==1)
+#       {
+#         # III.b.  Controls
+#         NNc <- nrow(Z)
+#         ZZc <- cbind(matrix(1, nrow=NNc, ncol=1),Z)
+#         Kx <- ncol(ZZc)
+#         
+#         xw <- ZZc*(sqrt((1-Tr)*Kcount) %*% matrix(1, nrow=1, ncol=Kx))
+#         
+#         foo <- min(eigen(t(xw)%*%xw, only.values=TRUE)$values)
+#         foo <- as.double(foo<=ccc)
+#         foo2 <- apply(xw, 2, sd)
+# 
+#         options(show.error.messages = FALSE)
+#         wout <- NULL        
+#         try(wout <- solve( t(xw) %*% xw + diag(Kx) * ccc * (foo) * max(foo2)) %*%
+#             (t(xw) %*% (Y*sqrt((1-Tr)*Kcount))))
+#         if(is.null(wout))
+#           {
+#             wout2 <- NULL
+#             try(wout2 <- ginv( t(xw) %*% xw + diag(Kx) * ccc * (foo) * max(foo2)) %*%
+#                 (t(xw) %*% (Y*sqrt((1-Tr)*Kcount))))
+#             if(!is.null(wout2))
+#               {
+#                 wout <-wout2
+#                 warning("using generalized inverse to calculate Bias Adjustment probably because of singular 'Z'")
+#               }
+#           }        
+#         options(show.error.messages = TRUE)
+#         if(is.null(wout))
+#           {
+#             warning("unable to calculate Bias Adjustment probably because of singular 'Z'")
+#             BiasAdj <- 0
+#           } else {
+#             NW <- nrow(wout)
+# #            KW <- ncol(wout)
+#             Alphac <- as.matrix(wout[2:NW,1])
+#           }
+#     }
+#     
+#     print("Got to point 11.")
+# 
+#     if(BiasAdj==1)
+#       {
+#         # III.c. adjust matched outcomes using regression adjustment for bias adjusted matching estimator
+#         IZ <- as.matrix(IZ)
+#         Zc <- as.matrix(Zc)
+#         Zt <- as.matrix(Zt)
+#         Alphat <- as.matrix(Alphat)
+# 
+#         SCAUS <- YCAUS-Tr*(ZCAUS %*% Alphac)-(1-Tr)*(ZCAUS %*% Alphat)
+#         # adjusted control outcome
+#         Yc.adj <- Yc+BiasAdj * (IZ-Zc) %*% Alphac
+#         # adjusted treated outcome
+#         Yt.adj <- Yt+BiasAdj*(IZ-Zt) %*% Alphat
+#         Tau.i <- Yt.adj - Yc.adj
+#       } else {
+#         Yc.adj <- Yc
+#         Yt.adj <- Yt
+#         Tau.i <- Yt.adj - Yc.adj        
+#       }
+#        
+#     art.data <- cbind(I,IM)
+# 
+#     # III. If conditional variance is needed, initialize variance vector
+#     # and loop through all observations
+#     
+#     print("Got to point 12.")
+# 
+#     if (Var.calc>0)
+#       {
+#         #For R version of this function see Matching version < 4.5-0008
+#         Sigs <- VarCalcMatchC(N=N, xvars=ncol(X), Var.calc=Var.calc,
+#                               cdd=cdd, caliperflag=caliperflag, 
+#                               ww=ww, Tr=Tr, Xmod=s1$X,
+#                               CaliperVec=use.ecaliper, Xorig=X.orig,
+#                               restrict.trigger=restrict.trigger, restrict=restrict,
+#                               DiagWeightMatrixFlag=DiagWeightMatrixFlag,
+#                               Y=Y, weightFlag=weights.flag, weight=weight)            
+#       } #end of var.calc > 0
+# 
+#     est <- t(W) %*% Tau.i/sum(W) # matching estimator
+# 
+#     if(version=="standard")
+#       {
+#         if (Var.calc==0)
+#           {
+#             eps <- Tau.i - as.double(est)
+#             eps.sq <- eps*eps
+#             Sigs <- 0.5 * matrix(1, N, 1) %*% (t(eps.sq) %*% W)/sum(W) #sss <- sqrt(Sigs[1,1])
+#           } #end of Var.calc==0
+#         
+#         SN <- sum(iot.t)
+#         var.sample <- sum((Sigs*(iot.t+iot.c*Kcount)*(iot.t+iot.c*Kcount))/(SN*SN))
+#         
+#         if (All==1)
+#           {
+#             var.pop <- sum((Sigs*(iot.c*Kcount*Kcount+2*iot.c*Kcount-iot.c*KKcount))/(SN*SN))
+#           } else {
+#             var.pop=sum((Sigs*(iot.c*Kcount*Kcount-iot.c*KKcount))/(SN*SN))
+#           }
+#         
+#         if (BiasAdj==1)
+#           {
+#             dvar.pop <- sum(iot.t*(SCAUS-as.double(est))*(SCAUS-as.double(est)))/(SN*SN)
+#           } else {
+#             dvar.pop <- sum(iot.t*(YCAUS-as.double(est))*(YCAUS-as.double(est)))/(SN*SN)
+#           }
+#         
+#         var.pop <- var.pop + dvar.pop
+#         
+#         if (SAMPLE==1)
+#           {
+#             var <- var.sample
+#           } else {
+#             #var <- max(var.sample, var.pop)
+#             var <- var.pop
+#           }
+#         
+#         var.cond <- max(var.sample,var.pop)-var.sample
+#         se <- sqrt(var)
+#         se.cond <- sqrt(var.cond)
+#         #Sig <- sqrt(Sigs)        
+#       } else {
+#         se=NULL
+#         se.cond=NULL
+#       }
+#         
+#     if (All==2)
+#       est <- -1*est
+#     
+#     print("Got to point 13.")
+# 
+# #    if (exact==1)
+# #      {
+# #        Vt.u <- Xt.u[,(Kx-Mv+1):Kx]
+# #        Vc.u <- Xc.u[,(Kx-Mv+1):Kx]
+# #        Vdif <- abs(Vt.u-Vc.u)
+# #
+# #        if (Mv>1)
+# #          Vdif <- as.matrix(apply(t(Vdif), 2, sum))
+# #
+# #        em[1,1] <- length(Vdif)
+# #        em[2,1] <- sum(Vdif>0.000001)
+# #      }#end of exact==1
+# 
+#     if(!MatchbyAI)
+#       {
+#         return(list(est=est, se=se, se.cond=se.cond, W=W,
+#                     sum.caliper.drops=sum.caliper.drops,
+#                     art.data=art.data, 
+#                     MatchLoopC=MatchLoopC.indx))
+#       } else {
+#         if(Var.calc==0)
+#           Sigs <- NULL
+#         return(list(est=est, se=se, se.cond=se.cond, W=W,
+#                     sum.caliper.drops=sum.caliper.drops,
+#                     art.data=art.data, 
+#                     MatchLoopC=MatchLoopC.indx,
+#                     YCAUS=YCAUS, Kcount=Kcount, KKcount=KKcount,
+#                     Sigs=Sigs))
+#       }
   }# end of RmatchLoop
 
 MatchLoopC <- function(N, xvars, All, M, cdd, caliperflag, replace, ties, ww, Tr, Xmod, weights, CaliperVec, Xorig,
