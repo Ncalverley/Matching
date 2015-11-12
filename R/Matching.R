@@ -31,8 +31,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     }
   }
   
-  print("Got to point 1.")
-  
   Y <- as.double(Y)
   Tr <- as.double(Tr)
   X <- as.matrix(X)
@@ -88,8 +86,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     stop("'CommonSupport' must be a logical variable---i.e., TRUE (1) or FALSE (0)")
   }
   
-  print("Got to point 2.")
-  
   if (CommonSupport == TRUE) {
     tr.min <- min(X[Tr == 1, 1])
     tr.max <- max(X[Tr == 1, 1])
@@ -117,8 +113,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     orig.nobs <- length(Y)
     nobs <- orig.nobs
   }
-  
-  print("Got to point 3.")
   
   if (tolerance < 0) {
     warning("User set 'tolerance' to less than 0.  Resetting to the default which is 0.00001.")
@@ -150,8 +144,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     version <- "standard"
   }
   
-  print("Got to point 4.")
-  
   if (version == "Matchby") {
     version <- "fast"
     Matchby.call <- TRUE
@@ -166,8 +158,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     Matchby.call <- FALSE
     MatchbyAI <- FALSE
   }
-  
-  print("Got to point 5.")
   
   if (Var.calc != 0 & version == "fast") {
     warning("Var.calc cannot be estimate when version=='fast'")
@@ -206,8 +196,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     return(invisible(NULL))
   }
   
-  print("Got to point 6.")
-  
   ccc <- tolerance
   cdd <- distance.tolerance
   orig.treated.nobs <- sum(Tr == 1)
@@ -218,8 +206,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
   weights.orig <- as.matrix(weights)
   zvars <- ncol(Z)
   estimand.orig <- estimand
-  
-  print("Got to point 7.")
   
   if (estimand == "ATT") {
     estimand <- 0
@@ -273,8 +259,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
             immediate. = TRUE)
   }
   
-  print("Got to point 8.")
-  
   if (!is.null(restrict)) {
     if (!is.matrix(restrict)) 
       stop("'restrict' must be a matrix of restricted observations rows and three columns: c(i,j restriction)")
@@ -316,9 +300,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     ecaliper <- NULL
   }
   
-  
-  print("Got to point 9.")
-  
   if (!is.null(exact)) {
     if (is.null(caliper)) {
       max.diff <- abs(max(X) - min(X) + tolerance * 100)
@@ -358,8 +339,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     }
   }
   
-  print("Got to point 10.")
-  
   if (version == "fast" | version == "standard") {
     if (!is.null(match.out)) {
       
@@ -398,8 +377,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
                   ccc = ccc, cdd = cdd, ecaliper = ecaliper, restrict = restrict)
   }
   
-  print("Got to point 11.")
-  
   if (is.null(ret$est)) {
     if (!Matchby.call) {
       if (ret$valid < 1) {
@@ -423,8 +400,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     class(z) <- "Match"
     return(z)
   }
-  
-  print("Got to point 12.")
   
   indx <- cbind(ret$art.data[, 1], ret$art.data[, 2], ret$W)
   index.treated <- indx[, 1]
@@ -458,8 +433,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     index.treated <- indx[, 2]
     index.control <- indx[, 1]
   }
-  
-  print("Got to point 13.")
   
   mdata <- list()
   mdata$Y <- c(Y[index.treated], Y[index.control])
@@ -499,8 +472,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     }
     index.dropped <- matched.index[matched]
   }
-  
-  print("Got to point 14.")
   
   z <- list(est = ret$est, se = ret$se, est.noadj = mest, se.standard = se.standard, 
             se.cond = ret$se.cond, mdata = mdata, index.treated = index.treated, 
@@ -2308,8 +2279,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     sum.caliper.drops <- 0
     X.orig <- X
-    
-    print("Got to point 1.")
 
 #are we using the restriction matrix?
     if(is.matrix(restrict)) {
@@ -2334,8 +2303,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 # two slippage parameters that are used to determine whether distances are equal
 # distances less than ccc or cdd are interpeted as zero.
 # these are passed in.  ccc, cdd
-
-    print("Got to point 2.")
 
 # I. set up
 # I.a. vector for which observations we want the average effect
@@ -2403,8 +2370,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         sv <- sv * sqrt(N/(N-1))
         Sig.V[j,1] <- sv
       } #end of j loop
-    
-    print("Got to point 3.")
 
 # I.d. define weight matrix for metric, taking into account normalization of
 # regressors.
@@ -2421,8 +2386,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
             Weight.matrix <- diag(Kx)
           }
       }
-    
-    print("Got to point 3a.")
     
       # DO NOT RESCALE THE Weight.matrix!!
       #else if (Weight==3)
@@ -2451,12 +2414,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     
     if ( eigVal < ccc )
       Weight.matrix <- Weight.matrix + diag(Kx)*ccc
-    
-    print("Got to point 3b.")
 
     ww <- chol(Weight.matrix) # so that ww*ww=w.m
-    
-    print("Got to point 3c.")
 
     if(is.null(s1$ecaliper))
       {
@@ -2466,8 +2425,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         caliperflag <- 1
         use.ecaliper <- s1$ecaliper
       }
-    
-    print("Got to point 4.")
 
     #if we have a diagonal matrix we can void cblas_dgemm
     if (Kx > 1)
@@ -2527,8 +2484,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     #      }
     #    return(ret)
     #  }
-    
-    print("Got to point 5.")
         
     if (All==2)
       {
@@ -2562,8 +2517,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     W <- indx[,3]
     
-    print("Got to point 6.")
-    
     if(BiasAdj==1 & sum(W) < ncol(Z))
       {
         warning("Fewer (weighted) matches than variables in 'Z': BiasAdjust set to FALSE")
@@ -2581,8 +2534,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         Zt <- Z[indx[,4],]
         Zc <- Z[indx[,5],]
     }
-    
-    print("Got to point 7.")
 
     est.func <- function(N, All, Tr, indx, weight, BiasAdj, Kz)
       {
@@ -2659,8 +2610,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         return(list(YCAUS=YCAUS,ZCAUS=ZCAUS,Kcount=Kcount,KKcount=KKcount))
       } #end of est.func
     
-    print("Got to point 8.")
-    
     if(version=="standard" & BiasAdj==0)
       {
         ret <- .Call("EstFuncC", as.integer(N), as.integer(All), as.integer(nrow(indx)),
@@ -2712,8 +2661,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         return(list(sum.caliper.drops=N))
     }
     
-    print("Got to point 9.")
-    
     if (BiasAdj==1)
       {
         # III. Regression of outcome on covariates for matches
@@ -2760,8 +2707,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
             Alphat <- matrix(0, nrow=Kz, ncol=1)
           } #end if ALL
     }
-    
-    print("Got to point 10.")
 
     if(BiasAdj==1)
       {
@@ -2802,8 +2747,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
             Alphac <- as.matrix(wout[2:NW,1])
           }
     }
-    
-    print("Got to point 11.")
 
     if(BiasAdj==1)
       {
@@ -2829,8 +2772,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     # III. If conditional variance is needed, initialize variance vector
     # and loop through all observations
-    
-    print("Got to point 12.")
 
     if (Var.calc>0)
       {
@@ -2893,8 +2834,6 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         
     if (All==2)
       est <- -1*est
-    
-    print("Got to point 13.")
 
 #    if (exact==1)
 #      {
