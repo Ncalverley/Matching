@@ -342,8 +342,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
   if (version == "fast" | version == "standard") {
     if (!is.null(match.out)) {
       
-      print("Entering RmatchLoop ...")
-      
       ret <- RmatchLoop(Y = Y, Tr = Tr, X = X, Z = Z, V = V, 
                         All = estimand, M = M, BiasAdj = BiasAdj, Weight = Weight, 
                         Weight.matrix = Weight.matrix, Var.calc = Var.calc, 
@@ -354,8 +352,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
                         ties = ties, version = version, MatchbyAI = MatchbyAI)
     }
     else {
-      
-      print("Entering RmatchLoop ...")
       
       ret <- RmatchLoop(Y = Y, Tr = Tr, X = X, Z = Z, V = V, 
                         All = estimand, M = M, BiasAdj = BiasAdj, Weight = Weight, 
@@ -368,8 +364,6 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     }
   }
   else {
-    
-    print("Entering Rmatch ...")
     
     ret <- Rmatch(Y = Y, Tr = Tr, X = X, Z = Z, V = V, All = estimand, 
                   M = M, BiasAdj = BiasAdj, Weight = Weight, Weight.matrix = Weight.matrix, 
