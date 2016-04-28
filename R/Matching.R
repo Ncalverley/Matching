@@ -2441,6 +2441,11 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     }
     
     print("Checkpoint 1b...")
+    
+    print("The weight matrix is:")
+    
+    print(Weight.matrix)
+    
     ww <- chol(Weight.matrix) # so that ww*ww=w.m
 
     if(is.null(s1$ecaliper))
