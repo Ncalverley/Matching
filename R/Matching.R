@@ -16,6 +16,9 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
                    restrict = NULL, match.out = NULL, distance.tolerance = 1e-05, 
                    tolerance = sqrt(.Machine$double.eps), version = "standard") 
 {
+  
+  print("Starting Matching...")
+  
   BiasAdj <- as.double(BiasAdjust)
   sample <- as.double(sample)
   if ((BiasAdj != 0) & (BiasAdj != 1)) {
@@ -339,8 +342,12 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     }
   }
   
+  print("Finished Pre-processing...")
+  
   if (version == "fast" | version == "standard") {
     if (!is.null(match.out)) {
+      
+      print("Entering matchloop version 1...")
       
       ret <- RmatchLoop(Y = Y, Tr = Tr, X = X, Z = Z, V = V, 
                         All = estimand, M = M, BiasAdj = BiasAdj, Weight = Weight, 
@@ -353,6 +360,8 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     }
     else {
       
+      print("Entering matchloop version 2...")
+      
       ret <- RmatchLoop(Y = Y, Tr = Tr, X = X, Z = Z, V = V, 
                         All = estimand, M = M, BiasAdj = BiasAdj, Weight = Weight, 
                         Weight.matrix = Weight.matrix, Var.calc = Var.calc, 
@@ -364,6 +373,8 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     }
   }
   else {
+    
+    print("Entering Rmatch...")
     
     ret <- Rmatch(Y = Y, Tr = Tr, X = X, Z = Z, V = V, All = estimand, 
                   M = M, BiasAdj = BiasAdj, Weight = Weight, Weight.matrix = Weight.matrix, 
@@ -394,6 +405,8 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     class(z) <- "Match"
     return(z)
   }
+  
+  print("Finished the matching process, proceeding with remainder of function...")
   
   indx <- cbind(ret$art.data[, 1], ret$art.data[, 2], ret$W)
   index.treated <- indx[, 1]
@@ -427,6 +440,8 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     index.treated <- indx[, 2]
     index.control <- indx[, 1]
   }
+  
+  print("Creating mdata object...")
   
   mdata <- list()
   mdata$Y <- c(Y[index.treated], Y[index.control])
@@ -466,6 +481,8 @@ Match <- function (Y = NULL, Tr, X, Z = X, V = rep(1, length(Y)), estimand = "AT
     }
     index.dropped <- matched.index[matched]
   }
+  
+  print("Creating final results object...")
   
   z <- list(est = ret$est, se = ret$se, est.noadj = mest, se.standard = se.standard, 
             se.cond = ret$se.cond, mdata = mdata, index.treated = index.treated, 
