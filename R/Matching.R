@@ -2435,16 +2435,21 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     
     print("Checkpoint 1...")
     
-    if ( eigVal < ccc )
+    if ( eigVal < ccc ) {
+      print("Checkpoint 1a if statement is true...")
       Weight.matrix <- Weight.matrix + diag(Kx)*ccc
-
+    }
+    
+    print("Checkpoint 1b...")
     ww <- chol(Weight.matrix) # so that ww*ww=w.m
 
     if(is.null(s1$ecaliper))
       {
+        print("Checkpoint 1c s1ecaliper is null...")
         caliperflag <- 0
         use.ecaliper <- 0
       } else {
+        print("Checkpoint 1c s1ecaliper is not null...")
         caliperflag <- 1
         use.ecaliper <- s1$ecaliper
       }
