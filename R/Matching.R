@@ -2446,7 +2446,17 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     
     print(Weight.matrix)
     
-    ww <- chol(Weight.matrix) # so that ww*ww=w.m
+    if(nrow(Weight.matrix) == 1 & ncol(Weight.matrix) == 1 & Weight.matrix[1,1] == 1) {
+      ## The matching function was causing R to crash when the weight matrix was 
+      ## a single column and row and the only value was 1. In this case, the 
+      ## Cholesky Decomposition evaluates to 1, so we simply assign ww to Weight.matrix
+      ## manually and bypass the Cholesky Decomposition calculation.
+      print("Triggering weight matrix override...")
+      ww <- Weight.matrix # so that ww*ww=w.m
+    } else {
+      ww <- chol(Weight.matrix) # so that ww*ww=w.m
+    }
+    
 
     if(is.null(s1$ecaliper))
       {
