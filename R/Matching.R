@@ -2283,6 +2283,9 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
                        MatchLoopC.indx=NULL, weights.flag, replace=TRUE, ties=TRUE,
                        version="standard", MatchbyAI=FALSE)
   {
+  
+  print("Entering RmatchLoop...")
+  
     s1 <- MatchGenoudStage1caliper(Tr=Tr, X=X, All=All, M=M, weights=weight,
                                    exact=exact, caliper=caliper,
                                    distance.tolerance=cdd,
@@ -2349,6 +2352,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 #    AA    <- diag(Kx)
     Mu.X  <- matrix(0, Kx, 1)
     Sig.X <- matrix(0, Kx, 1)
+    
+    print("Entering K loop...")
 
     for (k in 1:Kx)
       {
@@ -2367,6 +2372,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     Mu.V  <- matrix(0, Mv, 1)
     Sig.V <- matrix(0, Mv, 1)
 
+    print("Entering J loop...")
+    
     for (j in 1:Mv)
       {
         Mu.V[j,1]= ( t(V[,j])%*%weight ) /sum(weight)
@@ -2386,6 +2393,9 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 # regressors.
 # If the eigenvalues of the regressors are too close to zero the Mahalanobis metric
 # is not used and we revert back to the default inverse of variances.
+    
+    print("Creating weight matrix...")
+    
     if (Weight==1)
       {
         Weight.matrix=diag(Kx)
@@ -2415,13 +2425,15 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 #        Sig.X <- rbind(Sig.X, matrix(1, nrow(Sig.V), 1))
 #      } #end of exact
     
-
+    print("Finishing weight matrix...")
+    
     if(nrow(Weight.matrix) == 1 & ncol(Weight.matrix) == 1 & Weight.matrix[1,1] == 1) {
       eigVal <- 1
     } else {
       eigVal <- min(eigen(Weight.matrix, only.values=TRUE)$values)
     }
     
+    print("Checkpoint 1...")
     
     if ( eigVal < ccc )
       Weight.matrix <- Weight.matrix + diag(Kx)*ccc
@@ -2436,6 +2448,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         caliperflag <- 1
         use.ecaliper <- s1$ecaliper
       }
+    
+    print("Checkpoint 2...")
 
     #if we have a diagonal matrix we can void cblas_dgemm
     if (Kx > 1)
@@ -2469,6 +2483,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
       }
 
     indx <- MatchLoopC.indx
+    
+    print("Checkpoint 3...")
 
     if(indx[1,1]==0)
       {
@@ -2495,6 +2511,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
     #      }
     #    return(ret)
     #  }
+    
+    print("Checkpoint 4...")
         
     if (All==2)
       {
@@ -2528,6 +2546,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     W <- indx[,3]
     
+    print("Checkpoint 5...")
+    
     if(BiasAdj==1 & sum(W) < ncol(Z))
       {
         warning("Fewer (weighted) matches than variables in 'Z': BiasAdjust set to FALSE")
@@ -2545,6 +2565,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         Zt <- Z[indx[,4],]
         Zc <- Z[indx[,5],]
     }
+    
+    print("Checkpoint 6...")
 
     est.func <- function(N, All, Tr, indx, weight, BiasAdj, Kz)
       {
@@ -2621,6 +2643,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         return(list(YCAUS=YCAUS,ZCAUS=ZCAUS,Kcount=Kcount,KKcount=KKcount))
       } #end of est.func
     
+    print("Checkpoint 7...")
+    
     if(version=="standard" & BiasAdj==0)
       {
         ret <- .Call("EstFuncC", as.integer(N), as.integer(All), as.integer(nrow(indx)),
@@ -2637,6 +2661,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         Kcount <- ret.est$Kcount
         KKcount <- ret.est$KKcount
       }
+    
+    print("Checkpoint 8...")
 
     if (All!=1)
       {
@@ -2671,6 +2697,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
       {
         return(list(sum.caliper.drops=N))
     }
+    
+    print("Checkpoint 9...")
     
     if (BiasAdj==1)
       {
@@ -2718,6 +2746,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
             Alphat <- matrix(0, nrow=Kz, ncol=1)
           } #end if ALL
     }
+    
+    print("Checkpoint 9...")
 
     if(BiasAdj==1)
       {
@@ -2758,6 +2788,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
             Alphac <- as.matrix(wout[2:NW,1])
           }
     }
+    
+    print("Checkpoint 10...")
 
     if(BiasAdj==1)
       {
@@ -2783,6 +2815,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
 
     # III. If conditional variance is needed, initialize variance vector
     # and loop through all observations
+    
+    print("Checkpoint 11...")
 
     if (Var.calc>0)
       {
@@ -2797,6 +2831,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
       } #end of var.calc > 0
 
     est <- t(W) %*% Tau.i/sum(W) # matching estimator
+    
+    print("Checkpoint 12...")
 
     if(version=="standard")
       {
@@ -2842,6 +2878,8 @@ RmatchLoop <- function(Y, Tr, X, Z, V, All, M, BiasAdj, Weight, Weight.matrix, V
         se=NULL
         se.cond=NULL
       }
+    
+    print("Checkpoint 13...")
         
     if (All==2)
       est <- -1*est
